@@ -1,0 +1,25 @@
+# Node & tooling
+node_modules/
+dist/
+.DS_Store
+
+# Env and secrets
+.env
+*.env*
+apps/server/.env
+apps/web/.env
+data/state.json
+
+# Spool and runtime data
+apps/server/spool/
+logs/
+
+# Frontend build artifacts
+apps/web/dist/
+.vite/
+
+# Editor/OS
+.idea/
+.vscode/
+*.swp
+*.log
