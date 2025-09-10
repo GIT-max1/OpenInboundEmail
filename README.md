@@ -2,7 +2,7 @@
 
 > Status and security note
 >
-> - This repository is provided as-is. Localhost/dev mode is tested; production mode is not yet field-tested, but is designed to work.
+> - This repository is provided as-is. Localhost/dev mode is tested; production mode is not yet field-tested, but should work in theory. 
 > - Before exposing publicly, review the Security hardening section, set an ADMIN_TOKEN, set FRONTEND_ORIGIN, and enable STARTTLS for SMTP.
 > - Never commit secrets (API tokens, .env files, data/state.json, or mail spools). A .gitignore is included to help prevent this.
 
