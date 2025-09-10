@@ -1,13 +1,13 @@
 {
   "name": "inbound-mail-web",
-  "version": "0.2.1",
-  "private": true,
-  "type": "module",
   "scripts": {
-  "dev": "vite --port 5174",
+    "dev": "vite --port 5177",
     "build": "vite build",
     "preview": "vite preview"
   },
+  "version": "0.2.1",
+  "private": true,
+  "type": "module",
   "dependencies": {
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.453.0",
