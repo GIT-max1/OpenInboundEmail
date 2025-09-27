@@ -1,0 +1,26 @@
+{
+  "mode": "prod",
+  "domain": "test.example.com",
+  "mxHostname": "mx.test.example.com",
+  "publicIPv4": "127.0.0.1",
+  "recipients": ["admin@test.example.com"],
+  "rbl": {
+    "enabled": false,
+    "zones": []
+  },
+  "greylist": {
+    "enabled": false,
+    "minDelaySec": 60,
+    "ttlSec": 86400
+  },
+  "policy": {
+    "requireDMARC": false
+  },
+  "dns": {
+    "provider": "manual",
+    "autoMaintain": false,
+    "cloudflare": {}
+  },
+  "tlsrptEmail": "tlsrpt@test.example.com",
+  "mtaStsMode": "enforce"
+}
