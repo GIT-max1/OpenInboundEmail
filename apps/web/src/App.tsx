@@ -22,7 +22,13 @@ export default function App() {
 
   const update = (patch: Partial<Settings>) => setState({ ...settings, ...patch });
 
-  async function save() { setSaving(true); await setSettings(settings!); setSaving(false); }
+  async function save() {
+    setSaving(true);
+    await setSettings(settings!);
+    const fresh = await getSettings();
+    setState(fresh);
+    setSaving(false);
+  }
   async function refreshStatus() { setStatus(null); const s = await dnsStatus(); setStatus(s); }
   async function applyDNS() { setApplying(true); const r = await dnsApply(); setApplying(false); alert(r.ok ? 'Applied' : `Error: ${r.error}`); refreshStatus(); }
 
@@ -32,6 +38,10 @@ export default function App() {
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Server size={22}/> Inbound Mail — Settings</h1>
         <span className={`px-3 py-1 rounded-xl text-sm ${modeBadge}`}>{settings.mode === 'dev' ? 'Localhost Testing Mode' : 'Production'}</span>
       </header>
+
+      <div className="text-xs text-slate-500">
+        Tip: set a browser-only admin token via <code>localStorage.setItem('ADMIN_TOKEN','your-token')</code>. It is sent as a Bearer token only for protected actions and never stored server-side.
+      </div>
 
       <Card>
         <div className="grid md:grid-cols-2 gap-4">
@@ -45,7 +55,7 @@ export default function App() {
           </div>
           <div>
             <Label>Recipients (comma-separated)</Label>
-            <Input value={settings.recipients.join(',')} onChange={e=>update({ recipients: e.target.value.split(',').map(s=>s.trim()).filter(Boolean) })} />
+            <Input value={settings.recipients.join(',')} onChange={e=>update({ recipients: e.target.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean) })} />
             <p className="text-xs text-slate-500 mt-2">Leave empty to accept any user @ {settings.domain}.</p>
           </div>
         </div>

@@ -20,9 +20,12 @@ export class InboundSMTP {
 
     const keyPath = process.env.SMTP_TLS_KEY;
     const certPath = process.env.SMTP_TLS_CERT;
-    const hasTLS = !!(keyPath && certPath && fs.existsSync(keyPath) && fs.existsSync(certPath));
+  const hasTLS = !!(keyPath && certPath && fs.existsSync(keyPath) && fs.existsSync(certPath));
 
-    this.server = new SMTPServer({
+  // naive in-memory connection counter to avoid bursts
+  const connPerIp = new Map<string, number>();
+
+  this.server = new SMTPServer({
       // Allow STARTTLS when certs are provided
       secure: false,
       key: hasTLS ? fs.readFileSync(keyPath!) : undefined,
@@ -34,6 +37,20 @@ export class InboundSMTP {
 
       onConnect: async (session, cb) => {
         try {
+          // require STARTTLS in prod if certs exist
+          if (s.mode === 'prod' && hasTLS && !(session as any).encrypted) {
+            return cb(new Error('530 5.7.0 STARTTLS required'));
+          }
+
+          // simple burst limit per IP
+          const ip = (session.remoteAddress||'').trim();
+          const active = (connPerIp.get(ip) || 0) + 1;
+          connPerIp.set(ip, active);
+          if (active > parseInt(process.env.SMTP_MAX_CONN_PER_IP||'10',10)) {
+            connPerIp.set(ip, active - 1);
+            return cb(new Error('421 4.7.0 too many connections from your host'));
+          }
+
           if (s.rbl.enabled && s.rbl.zones.length) {
             // DNSBL check: reject if listed in any configured zone
             const ip = (session.remoteAddress||'').trim();
@@ -71,7 +88,7 @@ export class InboundSMTP {
   onData: (stream, session, cb) => {
         const chunks: Buffer[] = [];
         let total = 0;
-        stream.on('data', (d: Buffer) => { total += d.length; chunks.push(d); });
+        stream.on('data', (d: Buffer) => { total += d.length; chunks.push(d); if (total > parseInt(process.env.MAX_MESSAGE_SIZE||'10485760',10)) stream.destroy(new Error('552 message too large')); });
         stream.on('end', async () => {
           try {
             const raw = Buffer.concat(chunks);
@@ -99,7 +116,8 @@ export class InboundSMTP {
             const base = process.env.SPOOL_DIR || './spool';
             const sanitize = (s: string) => s.replace(/[^a-z0-9._-]/g, '_');
             for (const rcpt of session.envelope.rcptTo || []) {
-              const [localRaw, domain] = (rcpt.address||'').toLowerCase().split('@');
+              const [localRaw, domainRaw] = (rcpt.address||'').toLowerCase().split('@');
+              const domain = sanitize(domainRaw || 'unknown');
               const local = sanitize(localRaw || 'unknown');
               const root = path.join(base, domain, local, 'Maildir');
               fs.mkdirSync(path.join(root, 'tmp'), { recursive: true });
@@ -110,6 +128,11 @@ export class InboundSMTP {
             logger.info({ from: parsed.from?.text, subj: parsed.subject, to: session.envelope.rcptTo?.map(r=>r.address), dmarc: dmarcResult }, 'accepted');
             cb();
           } catch (e:any) { logger.error({ e }, 'onData'); cb(new Error('451 4.3.0 processing error')); }
+          finally {
+            const ip = (session.remoteAddress||'').trim();
+            const active = (connPerIp.get(ip) || 1) - 1;
+            connPerIp.set(ip, Math.max(0, active));
+          }
         });
       }
     });

@@ -11,7 +11,7 @@ const defaults: Settings = {
   mxHostname: process.env.SMTP_HOSTNAME || 'mx1.example.com',
   publicIPv4: process.env.PUBLIC_IPV4 || null,
   publicIPv6: process.env.PUBLIC_IPV6 || null,
-  recipients: ['info@example.com'],
+  recipients: [],
   rbl: { enabled: (process.env.ENABLE_RBL||'true')==='true', zones: (process.env.RBL_ZONES||'').split(',').filter(Boolean) },
   greylist: { enabled: (process.env.ENABLE_GREYLIST||'true')==='true', minDelaySec: parseInt(process.env.GREYLIST_MIN_DELAY||'60', 10), ttlSec: parseInt(process.env.GREYLIST_TTL||'86400', 10) },
   policy: { requireDMARC: (process.env.REQUIRE_DMARC||'false')==='true' },

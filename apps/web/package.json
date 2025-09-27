@@ -1,7 +1,7 @@
 {
   "name": "inbound-mail-web",
   "scripts": {
-    "dev": "vite --port 5177",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -15,7 +15,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-  "@vitejs/plugin-react": "^4.3.1",
+    "@vitejs/plugin-react": "^4.3.1",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "autoprefixer": "^10.4.18",
