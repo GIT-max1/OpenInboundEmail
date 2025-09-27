@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Label } from './components/ui';
-import { Settings, getSettings, setSettings, dnsPreview, dnsStatus, dnsApply, dnsArtifactsUrl } from './api';
+import { Settings, getSettings, setSettings, dnsPreview, dnsStatus, dnsApply, dnsArtifactsUrl, adminLogin } from './api';
 import { Loader2, RefreshCw, Server, Shield, Cloud, Activity, TestTube, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -11,6 +11,7 @@ export default function App() {
   const [records, setRecords] = useState<any[]>([]);
   const [status, setStatus] = useState<any[] | null>(null);
   const [applying, setApplying] = useState(false);
+  const [jwtStatus, setJwtStatus] = useState<string | null>(null);
 
   useEffect(() => { (async () => { setLoading(true); const s = await getSettings(); setState(s); setLoading(false); })(); }, []);
 
@@ -39,8 +40,9 @@ export default function App() {
         <span className={`px-3 py-1 rounded-xl text-sm ${modeBadge}`}>{settings.mode === 'dev' ? 'Localhost Testing Mode' : 'Production'}</span>
       </header>
 
-      <div className="text-xs text-slate-500">
-        Tip: set a browser-only admin token via <code>localStorage.setItem('ADMIN_TOKEN','your-token')</code>. It is sent as a Bearer token only for protected actions and never stored server-side.
+      <div className="text-xs text-slate-500 space-y-1">
+        <div>Tip: set a browser-only admin token via <code>localStorage.setItem('ADMIN_TOKEN','your-token')</code>. It is sent as a Bearer token only for protected actions and never stored server-side.</div>
+        <div>If JWT is configured server-side, you can exchange it: <button className="underline" onClick={async()=>{ const tok = localStorage.getItem('ADMIN_TOKEN')||''; const r = await adminLogin(tok); if (r){ localStorage.setItem('ADMIN_JWT', r.token); setJwtStatus('JWT acquired'); setTimeout(()=>setJwtStatus(null), 3000);} else { setJwtStatus('Login failed'); setTimeout(()=>setJwtStatus(null), 3000);} }}>Get JWT</button> {jwtStatus && <span className="text-slate-600">— {jwtStatus}</span>}</div>
       </div>
 
       <Card>

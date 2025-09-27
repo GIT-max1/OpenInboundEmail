@@ -18,9 +18,22 @@ export type DNSRecord = { type: string; name: string; content: string; ttl?: num
 const API = (path: string) => `${location.origin.replace(/:\d+$/, ':4000')}${path}`; // dev proxy to 4000 if opened via vite
 function buildHeaders(base?: Record<string,string>) {
   const h = new Headers(base || {});
-  const t = localStorage.getItem('ADMIN_TOKEN');
-  if (t) h.set('Authorization', `Bearer ${t}`);
+  // Prefer JWT if present, else fallback to static token
+  const jwt = localStorage.getItem('ADMIN_JWT');
+  const tok = localStorage.getItem('ADMIN_TOKEN');
+  if (jwt) h.set('Authorization', `Bearer ${jwt}`);
+  else if (tok) h.set('Authorization', `Bearer ${tok}`);
   return h;
+}
+
+export async function adminLogin(staticToken: string): Promise<{ token: string; exp: number } | null> {
+  const res = await fetch(API('/api/admin/login'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: staticToken })
+  });
+  if (!res.ok) return null;
+  return res.json();
 }
 
 export async function getSettings(): Promise<Settings> { const r = await fetch(API('/api/settings')); return r.json(); }
