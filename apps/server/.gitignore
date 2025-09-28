@@ -1,0 +1,14 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+/src/generated/prisma
+
+# runtime data and secrets
+data/
+prisma/dev.db
+prisma/migrations/
+spool/
+smtp.key
+smtp.crt
+admin.json

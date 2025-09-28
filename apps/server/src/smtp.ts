@@ -6,6 +6,9 @@ import { logger } from './logger.js';
 import type { Settings } from './types.js';
 import { greyDecision } from './greylist.js';
 import dns from 'node:dns/promises';
+import { PrismaClient } from './generated/prisma/index.js';
+
+const prisma = new PrismaClient();
 
 export class InboundSMTP {
   private server?: SMTPServer;
@@ -124,6 +127,18 @@ export class InboundSMTP {
               fs.mkdirSync(path.join(root, 'new'), { recursive: true });
               const fname = `${Date.now()}_${Math.random().toString(36).slice(2)}.eml`;
               fs.writeFileSync(path.join(root, 'new', fname), raw);
+
+              // Also save to DB
+              await prisma.email.create({
+                data: {
+                  from: parsed.from?.text || (typeof session.envelope.mailFrom === 'object' && session.envelope.mailFrom ? (session.envelope.mailFrom as any).address : null) || 'unknown',
+                  to: JSON.stringify(session.envelope.rcptTo?.map(r => r.address) || []),
+                  subject: parsed.subject,
+                  text: parsed.text,
+                  html: typeof parsed.html === 'string' ? parsed.html : null,
+                  raw: raw.toString()
+                }
+              });
             }
             logger.info({ from: parsed.from?.text, subj: parsed.subject, to: session.envelope.rcptTo?.map(r=>r.address), dmarc: dmarcResult }, 'accepted');
             cb();

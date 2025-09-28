@@ -1,29 +1,29 @@
 {
   "mode": "prod",
-  "domain": "yourdomain.com",
-  "mxHostname": "mx1.yourdomain.com",
-  "publicIPv4": null,
+  "domain": "test.example.com",
+  "mxHostname": "mx.test.example.com",
+  "publicIPv4": "127.0.0.1",
   "publicIPv6": null,
   "recipients": [
-    "support@yourdomain.com"
+    "admin@test.example.com"
   ],
   "rbl": {
-    "enabled": true,
+    "enabled": false,
     "zones": []
   },
   "greylist": {
-    "enabled": true,
+    "enabled": false,
     "minDelaySec": 60,
     "ttlSec": 86400
   },
   "policy": {
-    "requireDMARC": true
+    "requireDMARC": false
   },
   "dns": {
     "provider": "manual",
-    "autoMaintain": true,
+    "autoMaintain": false,
     "cloudflare": {}
   },
-  "tlsrptEmail": "tlsrpt@yourdomain.com",
+  "tlsrptEmail": "tlsrpt@test.example.com",
   "mtaStsMode": "enforce"
 }

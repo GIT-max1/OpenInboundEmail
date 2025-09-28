@@ -21,8 +21,10 @@ function buildHeaders(base?: Record<string,string>) {
   // Prefer JWT if present, else fallback to static token
   const jwt = localStorage.getItem('ADMIN_JWT');
   const tok = localStorage.getItem('ADMIN_TOKEN');
+  const inboxTok = localStorage.getItem('INBOX_TOKEN');
   if (jwt) h.set('Authorization', `Bearer ${jwt}`);
   else if (tok) h.set('Authorization', `Bearer ${tok}`);
+  if (inboxTok) h.set('Authorization', `Bearer ${inboxTok}`);
   return h;
 }
 
@@ -43,4 +45,11 @@ export async function setSettings(s: Settings): Promise<void> {
 export async function dnsPreview(): Promise<DNSRecord[]> { const r = await fetch(API('/api/dns/preview')); return r.json(); }
 export async function dnsStatus(): Promise<any> { const r = await fetch(API('/api/dns/status')); return r.json(); }
 export async function dnsApply(): Promise<any> { const r = await fetch(API('/api/dns/apply'), { method: 'POST', headers: buildHeaders() }); return r.json(); }
-export function dnsArtifactsUrl() { return API('/api/dns/artifacts.zip'); }
+export async function dnsArtifactsUrl() { return API('/api/dns/artifacts.zip'); }
+
+export async function getInbox(): Promise<any[]> { const r = await fetch(API('/api/inbox'), { headers: buildHeaders() }); return r.json(); }
+export async function getEmail(id: number): Promise<any> { const r = await fetch(API(`/api/inbox/${id}`), { headers: buildHeaders() }); return r.json(); }
+
+export async function accountStatus(): Promise<{ exists: boolean }> { const r = await fetch(API('/api/account/status')); return r.json(); }
+export async function createAccount(username: string, password: string) { const r = await fetch(API('/api/account/create'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }); return r.json(); }
+export async function loginAccount(username: string, password: string) { const r = await fetch(API('/api/account/login'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }); return r.json(); }

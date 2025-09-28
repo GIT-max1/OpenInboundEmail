@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Label } from './components/ui';
-import { Settings, getSettings, setSettings, dnsPreview, dnsStatus, dnsApply, dnsArtifactsUrl, adminLogin } from './api';
-import { Loader2, RefreshCw, Server, Shield, Cloud, Activity, TestTube, Download } from 'lucide-react';
+import { Settings, getSettings, setSettings, dnsPreview, dnsStatus, dnsApply, dnsArtifactsUrl, getInbox, getEmail, accountStatus, createAccount, loginAccount, adminLogin } from './api';
+import { Loader2, RefreshCw, Server, Shield, Cloud, Activity, TestTube, Download, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function App() {
@@ -12,8 +12,14 @@ export default function App() {
   const [status, setStatus] = useState<any[] | null>(null);
   const [applying, setApplying] = useState(false);
   const [jwtStatus, setJwtStatus] = useState<string | null>(null);
+  const [inbox, setInbox] = useState<any[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState<any | null>(null);
+  const [accountNeedsCreate, setAccountNeedsCreate] = useState<boolean | null>(null);
+  const [authUser, setAuthUser] = useState<string | null>(null);
+  const [authPass, setAuthPass] = useState<string>('');
 
   useEffect(() => { (async () => { setLoading(true); const s = await getSettings(); setState(s); setLoading(false); })(); }, []);
+  useEffect(() => { (async () => { const st = await accountStatus(); setAccountNeedsCreate(!st.exists); })(); }, []);
 
   useEffect(() => { (async () => { if (!settings) return; const recs = await dnsPreview(); setRecords(recs); })(); }, [settings?.domain, settings?.mxHostname, settings?.publicIPv4, settings?.publicIPv6, settings?.tlsrptEmail, settings?.mtaStsMode]);
 
@@ -32,6 +38,8 @@ export default function App() {
   }
   async function refreshStatus() { setStatus(null); const s = await dnsStatus(); setStatus(s); }
   async function applyDNS() { setApplying(true); const r = await dnsApply(); setApplying(false); alert(r.ok ? 'Applied' : `Error: ${r.error}`); refreshStatus(); }
+  async function refreshInbox() { try { const emails = await getInbox(); setInbox(emails); } catch {} }
+  async function viewEmail(id: number) { try { const email = await getEmail(id); setSelectedEmail(email); } catch {} }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -151,14 +159,55 @@ export default function App() {
         </Card>
 
         <Card>
-          <div className="flex items-center gap-2 mb-3"><TestTube size={18}/> Dev Testing</div>
-          <div className="text-xs text-slate-600">
-            <p>Send a test (localhost):</p>
-            <pre className="bg-slate-100 p-2 rounded text-xs whitespace-pre-wrap break-all">swaks --server 127.0.0.1:2525 --from a@test.net --to {settings.recipients[0]||`info@${settings.domain}`} --data "Subject: hi\n\nhello"</pre>
-            <p className="mt-2">Maildir path: <code>apps/server/spool/&lt;domain&gt;/&lt;user&gt;/Maildir/new/</code></p>
-          </div>
+          <div className="flex items-center gap-2 mb-3"><Mail size={18}/> Inbox</div>
+          {accountNeedsCreate === null ? (
+            <div>Checking account status…</div>
+          ) : accountNeedsCreate ? (
+            <div className="space-y-2">
+              <div>Create master account (single admin)</div>
+              <Input placeholder="username" value={authUser||''} onChange={e=>setAuthUser(e.target.value)} />
+              <Input placeholder="password" type="password" value={authPass} onChange={e=>setAuthPass(e.target.value)} />
+              <div className="flex gap-2"><Button onClick={async()=>{ const r = await createAccount(authUser||'',''+authPass); if (r?.ok && r.token) { localStorage.setItem('INBOX_TOKEN', r.token); setAccountNeedsCreate(false); setAuthPass(''); } else { alert('create failed: '+JSON.stringify(r)); } }}>Create Account</Button></div>
+            </div>
+          ) : (
+            <div>
+              <div className="text-xs text-slate-600 space-y-1 max-h-48 overflow-auto">
+                {inbox.slice(0,10).map((e:any)=> (
+                  <div key={e.id} className="cursor-pointer hover:bg-slate-100 p-1 rounded" onClick={()=>viewEmail(e.id)}>
+                    <div className="font-medium truncate">{e.subject || '(no subject)'}</div>
+                    <div className="text-slate-500 truncate">From: {e.from}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-3">
+                <Button onClick={refreshInbox}><RefreshCw size={16}/>&nbsp;Refresh Inbox</Button>
+                <Button onClick={async()=>{ const user = prompt('username'); const pass = prompt('password'); if (!user||!pass) return; const r = await loginAccount(user, pass); if (r?.ok && r.token) { localStorage.setItem('INBOX_TOKEN', r.token); alert('Logged in'); } else alert('Login failed'); }}>Login</Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
+
+      {selectedEmail && (
+        <Card>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium">{selectedEmail.subject || '(no subject)'}</h3>
+            <Button onClick={()=>setSelectedEmail(null)}>Close</Button>
+          </div>
+          <div className="text-sm text-slate-600 space-y-1">
+            <div><b>From:</b> {selectedEmail.from}</div>
+            <div><b>To:</b> {Array.isArray(selectedEmail.to) ? selectedEmail.to.join(', ') : selectedEmail.to}</div>
+            <div><b>Received:</b> {new Date(selectedEmail.receivedAt).toLocaleString()}</div>
+          </div>
+          <div className="mt-4 border-t pt-4">
+            {selectedEmail.html ? (
+              <div dangerouslySetInnerHTML={{ __html: selectedEmail.html }} className="prose prose-sm max-w-none" />
+            ) : (
+              <pre className="whitespace-pre-wrap text-sm">{selectedEmail.text}</pre>
+            )}
+          </div>
+        </Card>
+      )}
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <Card>

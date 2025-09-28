@@ -46,6 +46,20 @@ Open http://localhost:5174 — the panel talks to http://localhost:4000.
 - Dev mode uses SMTP port 2525 and never writes DNS. Use swaks to test locally.
 - Switch to Production in the panel when you're ready to bind SMTP on port 25.
 
+Single master inbox account
+---------------------------
+
+This project exposes a small master inbox account used to view received messages. Behavior in dev:
+
+- On server start the code will check for an existing account file and, if none is present, the UI will surface a "Create master account" form.
+- The create flow stores a single master account on disk (file: `apps/server/data/admin.json`) and returns a long-lived token to the client. The client stores that token in `localStorage.INBOX_TOKEN` and sends it as `Authorization: Bearer <token>` when calling `/api/inbox`.
+- If an account already exists the UI will show a Login flow which exchanges username+password for a regenerated token.
+- Alternatively you can still set `INBOX_PASSWORD` in the server environment to gate the inbox endpoints; the server will also accept that password as Bearer token.
+
+Important: only one master account is supported by design. To rotate the token or reset the account, remove the `apps/server/data/admin.json` file and recreate the account via the UI or API.
+
+Note: the server may prompt for an inbox password at startup if `INBOX_PASSWORD` is not set in your environment; just press Enter to skip and use the account flow instead.
+
 ## Publish to GitHub (safely)
 
 1) Create a new empty repo on GitHub (do not add a README or .gitignore there).
@@ -63,6 +77,18 @@ git push -u origin main
 ```
 
 After pushing, go to the repo settings and set required branch protection as you prefer. If you later add secrets in CI, store them only in GitHub Actions secrets, not in the repo.
+
+Ready-to-push checklist
+-----------------------
+
+Before you run the `git` commands above, confirm these locally to avoid pushing secrets or runtime state:
+
+- Ensure `.env` files are not committed. If you have a local `.env`, add it to `.gitignore` and remove from the index: `git rm --cached .env`.
+- Ensure any runtime `apps/server/data/` files (including `admin.json`) are not tracked. You can add `apps/server/data/` to `.gitignore` if it isn't already.
+- Ensure `apps/server/spool/` (mail spools) is not tracked. If needed: `git rm -r --cached apps/server/spool`.
+- Run `git status` and confirm only code/config files are staged.
+
+When those checks are clean, commit and push as described above.
 
 ## Configure your domain
 
