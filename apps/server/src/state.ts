@@ -7,8 +7,8 @@ const STATE_PATH = path.join(DATA, 'state.json');
 
 const defaults: Settings = {
   mode: (process.env.MODE as 'dev'|'prod') || 'dev',
-  domain: process.env.DOMAIN || 'example.com',
-  mxHostname: process.env.SMTP_HOSTNAME || 'mx1.example.com',
+  domain: process.env.DOMAIN || 'local.test',
+  mxHostname: process.env.SMTP_HOSTNAME || 'mx.local.test',
   publicIPv4: process.env.PUBLIC_IPV4 || null,
   publicIPv6: process.env.PUBLIC_IPV6 || null,
   recipients: [],
@@ -20,7 +20,7 @@ const defaults: Settings = {
     autoMaintain: (process.env.AUTO_MAINTAIN_DNS||'true')==='true',
     cloudflare: { apiToken: process.env.CF_API_TOKEN, accountId: process.env.CF_ACCOUNT_ID }
   },
-  tlsrptEmail: process.env.TLSRPT_EMAIL || 'tlsrpt@example.com',
+  tlsrptEmail: process.env.TLSRPT_EMAIL || 'tlsrpt@local.test',
   mtaStsMode: (process.env.MTA_STS_MODE as any) || 'enforce'
 };
 

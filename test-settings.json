@@ -1,9 +1,9 @@
 {
   "mode": "prod",
-  "domain": "test.example.com",
-  "mxHostname": "mx.test.example.com",
+  "domain": "local.test",
+  "mxHostname": "mx.local.test",
   "publicIPv4": "127.0.0.1",
-  "recipients": ["admin@test.example.com"],
+  "recipients": ["admin@local.test"],
   "rbl": {
     "enabled": false,
     "zones": []
@@ -21,6 +21,6 @@
     "autoMaintain": false,
     "cloudflare": {}
   },
-  "tlsrptEmail": "tlsrpt@test.example.com",
+  "tlsrptEmail": "tlsrpt@local.test",
   "mtaStsMode": "enforce"
 }

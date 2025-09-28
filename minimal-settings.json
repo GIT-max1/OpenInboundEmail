@@ -1,1 +1,1 @@
-{"domain": "test.example.com", "mxHostname": "mx.test.example.com", "recipients": ["admin@test.example.com"]}
+{"domain": "local.test", "mxHostname": "mx.local.test", "recipients": ["admin@local.test"]}
