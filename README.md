@@ -226,6 +226,43 @@ Greylisting tip: disable it for first tests to avoid initial 450 tempfail, or re
 - DMARC enforcement: Enable "Require DMARC=pass" to bounce messages failing DMARC (when authentication results are available).
 - Token redaction: The API redacts stored Cloudflare tokens on GET /api/settings and preserves the existing token if the UI sends `__REDACTED__` on POST.
 
+Encrypted admin token storage
+-----------------------------
+
+You can encrypt the master admin store by setting `ADMIN_STORE_KEY` in the server environment (keep this secret). When set, the server will store an encrypted `apps/server/data/admin.enc` file instead of plaintext `admin.json`. Use a long, random key (e.g. a 32+ char passphrase). Example for a systemd environment file:
+
+```ini
+ADMIN_STORE_KEY=your-very-long-secret-key
+```
+
+If `ADMIN_STORE_KEY` is not set, the server will fall back to the plaintext `apps/server/data/admin.json` (still file-permission protected). To rotate or remove the encrypted store, delete the `admin.enc`/`admin.json` file and recreate the account via the UI.
+
+Systemd service example
+-----------------------
+
+An example systemd unit is included at `deploy/openinbound.service`. It demonstrates a minimal production deployment that runs the monorepo `start:prod` helper and reads environment variables from `/etc/openinbound.env`:
+
+```
+[Unit]
+Description=OpenInboundEmail API and SMTP
+After=network.target
+
+[Service]
+Type=simple
+User=inbound
+Group=inbound
+WorkingDirectory=/opt/openinbound
+EnvironmentFile=/etc/openinbound.env
+ExecStart=/usr/bin/npm run start:prod
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Adjust `WorkingDirectory`, `User`, and path to `npm` as appropriate for your host. Put secrets (for example `ADMIN_STORE_KEY`, `ADMIN_TOKEN`, `CF_API_TOKEN`) in `/etc/openinbound.env` and protect that file with strict permissions.
+
 ## Troubleshooting
 
 - "Could not find declaration for 'mailauth'" — already handled via a local d.ts in `apps/server/src/types-ext/mailauth.d.ts`.

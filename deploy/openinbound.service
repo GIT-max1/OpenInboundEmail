@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenInboundEmail API and SMTP
+After=network.target
+
+[Service]
+Type=simple
+User=inbound
+Group=inbound
+WorkingDirectory=/opt/openinbound
+# Environment file (example): /etc/openinbound.env
+EnvironmentFile=/etc/openinbound.env
+ExecStart=/usr/bin/npm run start:prod
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

@@ -3,7 +3,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
-const ADMIN_FILE = path.join(DATA_DIR, 'admin.json');
+const ADMIN_FILE_JSON = path.join(DATA_DIR, 'admin.json');
+const ADMIN_FILE_ENC = path.join(DATA_DIR, 'admin.enc');
 
 type Stored = {
   username: string;
@@ -21,15 +22,48 @@ function pbkdf(password: string, salt: string) {
   return crypto.pbkdf2Sync(password, salt, 120000, 64, 'sha512').toString('hex');
 }
 
+function getStoreKey(): Buffer | null {
+  const k = process.env.ADMIN_STORE_KEY || '';
+  if (!k) return null;
+  return crypto.createHash('sha256').update(k).digest();
+}
+
+function encryptString(plain: string, key: Buffer) {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  return Buffer.concat([iv, enc]).toString('base64');
+}
+
+function decryptString(b64: string, key: Buffer) {
+  const raw = Buffer.from(b64, 'base64');
+  const iv = raw.slice(0, 16);
+  const enc = raw.slice(16);
+  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+  const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
+  return dec.toString('utf8');
+}
+
 export function accountExists() {
-  return fs.existsSync(ADMIN_FILE);
+  const key = getStoreKey();
+  if (key) return fs.existsSync(ADMIN_FILE_ENC);
+  return fs.existsSync(ADMIN_FILE_JSON);
 }
 
 export function readAccount(): Stored | null {
-  if (!accountExists()) return null;
+  ensureDir();
+  const key = getStoreKey();
   try {
-    const raw = fs.readFileSync(ADMIN_FILE, 'utf8');
-    return JSON.parse(raw) as Stored;
+    if (key && fs.existsSync(ADMIN_FILE_ENC)) {
+      const raw = fs.readFileSync(ADMIN_FILE_ENC, 'utf8');
+      const dec = decryptString(raw, key);
+      return JSON.parse(dec) as Stored;
+    }
+    if (fs.existsSync(ADMIN_FILE_JSON)) {
+      const raw = fs.readFileSync(ADMIN_FILE_JSON, 'utf8');
+      return JSON.parse(raw) as Stored;
+    }
+    return null;
   } catch (e) { return null; }
 }
 
@@ -41,7 +75,13 @@ export function createAccount(username: string, password: string) {
   const tokenSalt = crypto.randomBytes(12).toString('hex');
   const tokenHash = pbkdf(token, tokenSalt);
   const store: Stored = { username, salt, hash, tokenSalt, tokenHash };
-  fs.writeFileSync(ADMIN_FILE, JSON.stringify(store, null, 2), { mode: 0o600 });
+  const key = getStoreKey();
+  if (key) {
+    const enc = encryptString(JSON.stringify(store), key);
+    fs.writeFileSync(ADMIN_FILE_ENC, enc, { mode: 0o600 });
+    return { token };
+  }
+  fs.writeFileSync(ADMIN_FILE_JSON, JSON.stringify(store, null, 2), { mode: 0o600 });
   return { token };
 }
 
@@ -67,6 +107,12 @@ export function regenToken(): { token: string } | null {
   const tokenSalt = crypto.randomBytes(12).toString('hex');
   const tokenHash = pbkdf(token, tokenSalt);
   const newStore = { ...s, tokenSalt, tokenHash };
-  fs.writeFileSync(ADMIN_FILE, JSON.stringify(newStore, null, 2), { mode: 0o600 });
+  const key = getStoreKey();
+  if (key) {
+    const enc = encryptString(JSON.stringify(newStore), key);
+    fs.writeFileSync(ADMIN_FILE_ENC, enc, { mode: 0o600 });
+    return { token };
+  }
+  fs.writeFileSync(ADMIN_FILE_JSON, JSON.stringify(newStore, null, 2), { mode: 0o600 });
   return { token };
 }
