@@ -12,6 +12,15 @@ EnvironmentFile=/etc/openinbound.env
 ExecStart=/usr/bin/npm run start:prod
 Restart=on-failure
 RestartSec=5s
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=yes
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+MemoryHigh=500M
+CPUAccounting=true
+StartLimitIntervalSec=600
+StartLimitBurst=5
 
 [Install]
 WantedBy=multi-user.target

@@ -263,6 +263,46 @@ WantedBy=multi-user.target
 
 Adjust `WorkingDirectory`, `User`, and path to `npm` as appropriate for your host. Put secrets (for example `ADMIN_STORE_KEY`, `ADMIN_TOKEN`, `CF_API_TOKEN`) in `/etc/openinbound.env` and protect that file with strict permissions.
 
+Rotate admin token safely
+------------------------
+
+A helper script is provided to regenerate the admin token and print it to stdout. It uses the same server store and writes the new token into the encrypted/plain store. Example:
+
+```bash
+# run from the repo or copy tools/rotate-admin-token.ts to the host
+tsx tools/rotate-admin-token.ts
+```
+
+The script prints the new token; copy it into your secure vault immediately (or email to yourself temporarily). The server will start accepting the new token immediately.
+
+Automated encrypted backups
+---------------------------
+
+We provide a backup script and systemd timer that creates encrypted tarballs of `apps/server/data`. Files:
+- `tools/backup-data.sh` — creates a timestamped tar.gz and encrypts with `ADMIN_STORE_KEY` when present.
+- `deploy/openinbound-backup.service` — systemd oneshot to run the backup.
+- `deploy/openinbound-backup.timer` — systemd timer to run the backup daily.
+
+Install and enable the timer on your host:
+
+```bash
+sudo cp deploy/openinbound-backup.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now openinbound-backup.timer
+```
+
+Hardened systemd unit notes
+---------------------------
+
+The provided `deploy/openinbound.service` contains additional hardening options:
+- `PrivateTmp=true` — private /tmp for the service
+- `NoNewPrivileges=true` — disallow privilege escalation
+- `ProtectSystem=strict` and `ProtectHome=yes` — read-only /usr and protected home
+- `CapabilityBoundingSet=CAP_NET_BIND_SERVICE` — only allow binding privileged ports
+- `MemoryHigh`/`CPUAccounting` — soft resource limits
+
+Adjust these as needed for your environment. Keep secrets in `/etc/openinbound.env` and protect them with `chmod 600`.
+
 ## Troubleshooting
 
 - "Could not find declaration for 'mailauth'" — already handled via a local d.ts in `apps/server/src/types-ext/mailauth.d.ts`.

@@ -1,0 +1,14 @@
+[Unit]
+Description=OpenInboundEmail backup data
+After=network.target
+
+[Service]
+Type=oneshot
+User=inbound
+Group=inbound
+WorkingDirectory=/opt/openinbound
+EnvironmentFile=/etc/openinbound.env
+ExecStart=/opt/openinbound/tools/backup-data.sh
+
+[Install]
+WantedBy=multi-user.target
