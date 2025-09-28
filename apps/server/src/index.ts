@@ -323,3 +323,12 @@ app.listen({ port: apiPort, host: apiHost }).then(() => logger.info({ apiPort, a
 
 // global not found
 app.setNotFoundHandler((_req, res) => res.code(404).send({ error: 'Not Found' }));
+
+// Informational root for convenience: point devs to the frontend URL
+app.get('/', async (_req, res) => {
+  const frontend = process.env.FRONTEND_ORIGIN || (process.env.MODE === 'dev' ? 'http://localhost:5174' : undefined);
+  if (frontend) {
+    return res.type('text/html').send(`<html><body><h3>InboundMail API</h3><p>Frontend: <a href="${frontend}">${frontend}</a></p></body></html>`);
+  }
+  return res.type('text/html').send('<html><body><h3>InboundMail API</h3><p>Frontend not configured; build and set PANEL_STATIC_DIR to serve static files from this API.</p></body></html>');
+});

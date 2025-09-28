@@ -50,6 +50,9 @@ Single master inbox account
 ---------------------------
 
 This project exposes a small master inbox account used to view received messages. Behavior in dev:
+---------------------------
+
+This project exposes a small master inbox account used to view received messages. Behavior in dev:
 
 - On server start the code will check for an existing account file and, if none is present, the UI will surface a "Create master account" form.
 - The create flow stores a single master account on disk (file: `apps/server/data/admin.json`) and returns a long-lived token to the client. The client stores that token in `localStorage.INBOX_TOKEN` and sends it as `Authorization: Bearer <token>` when calling `/api/inbox`.

@@ -10,6 +10,7 @@
     "dev:server": "npm --workspace apps/server run dev",
     "dev:web": "npm --workspace apps/web run dev",
     "build": "npm-run-all --print-name build:*",
+  "start:prod": "npm run build && npm --workspace apps/web run build && PANEL_STATIC_DIR=apps/web/dist npm --workspace apps/server run start",
     "build:server": "npm --workspace apps/server run build",
     "build:web": "npm --workspace apps/web run build",
     "start": "npm --workspace apps/server run start"
