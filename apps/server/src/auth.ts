@@ -15,7 +15,7 @@ type Stored = {
 };
 
 function ensureDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
 }
 
 function pbkdf(password: string, salt: string) {
@@ -29,19 +29,28 @@ function getStoreKey(): Buffer | null {
 }
 
 function encryptString(plain: string, key: Buffer) {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  // AES-256-GCM (AEAD): store as iv(12) || tag(16) || cipher
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
-  return Buffer.concat([iv, enc]).toString('base64');
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, enc]).toString('base64');
 }
 
 function decryptString(b64: string, key: Buffer) {
-  const raw = Buffer.from(b64, 'base64');
-  const iv = raw.slice(0, 16);
-  const enc = raw.slice(16);
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-  const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
-  return dec.toString('utf8');
+  try {
+    const raw = Buffer.from(b64, 'base64');
+    const iv = raw.slice(0, 12);
+    const tag = raw.slice(12, 28);
+    const enc = raw.slice(28);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(tag);
+    const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
+    return dec.toString('utf8');
+  } catch (e) {
+    // bubble up so callers can treat this as a corruption/decrypt failure
+    throw new Error('ADMIN_STORE_DECRYPTION_FAILED');
+  }
 }
 
 export function accountExists() {
@@ -56,7 +65,7 @@ export function readAccount(): Stored | null {
   try {
     if (key && fs.existsSync(ADMIN_FILE_ENC)) {
       const raw = fs.readFileSync(ADMIN_FILE_ENC, 'utf8');
-      const dec = decryptString(raw, key);
+      const dec = decryptString(raw, key); // may throw on auth failure
       return JSON.parse(dec) as Stored;
     }
     if (fs.existsSync(ADMIN_FILE_JSON)) {
@@ -64,7 +73,12 @@ export function readAccount(): Stored | null {
       return JSON.parse(raw) as Stored;
     }
     return null;
-  } catch (e) { return null; }
+  } catch (e:any) {
+    // If decryption or parse fails, surface a specific error so callers
+    // can avoid accidentally reinitializing the store.
+    if (e?.message === 'ADMIN_STORE_DECRYPTION_FAILED') throw e;
+    throw new Error('ADMIN_STORE_READ_FAILED');
+  }
 }
 
 export function createAccount(username: string, password: string) {
@@ -78,15 +92,20 @@ export function createAccount(username: string, password: string) {
   const key = getStoreKey();
   if (key) {
     const enc = encryptString(JSON.stringify(store), key);
-    fs.writeFileSync(ADMIN_FILE_ENC, enc, { mode: 0o600 });
+    const tmp = ADMIN_FILE_ENC + '.tmp';
+    fs.writeFileSync(tmp, enc, { mode: 0o600 });
+    fs.renameSync(tmp, ADMIN_FILE_ENC);
     return { token };
   }
-  fs.writeFileSync(ADMIN_FILE_JSON, JSON.stringify(store, null, 2), { mode: 0o600 });
+  const tmp = ADMIN_FILE_JSON + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(store, null, 2), { mode: 0o600 });
+  fs.renameSync(tmp, ADMIN_FILE_JSON);
   return { token };
 }
 
 export function verifyAccount(username: string, password: string) {
-  const s = readAccount();
+  let s: Stored | null = null;
+  try { s = readAccount(); } catch { return false; }
   if (!s) return false;
   if (s.username !== username) return false;
   const candidate = pbkdf(password, s.salt);
@@ -94,7 +113,8 @@ export function verifyAccount(username: string, password: string) {
 }
 
 export function verifyToken(token: string) {
-  const s = readAccount();
+  let s: Stored | null = null;
+  try { s = readAccount(); } catch { return false; }
   if (!s) return false;
   const candidate = pbkdf(token, s.tokenSalt);
   return crypto.timingSafeEqual(Buffer.from(candidate,'hex'), Buffer.from(s.tokenHash,'hex'));
@@ -110,9 +130,13 @@ export function regenToken(): { token: string } | null {
   const key = getStoreKey();
   if (key) {
     const enc = encryptString(JSON.stringify(newStore), key);
-    fs.writeFileSync(ADMIN_FILE_ENC, enc, { mode: 0o600 });
+    const tmp = ADMIN_FILE_ENC + '.tmp';
+    fs.writeFileSync(tmp, enc, { mode: 0o600 });
+    fs.renameSync(tmp, ADMIN_FILE_ENC);
     return { token };
   }
-  fs.writeFileSync(ADMIN_FILE_JSON, JSON.stringify(newStore, null, 2), { mode: 0o600 });
+  const tmp = ADMIN_FILE_JSON + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(newStore, null, 2), { mode: 0o600 });
+  fs.renameSync(tmp, ADMIN_FILE_JSON);
   return { token };
 }

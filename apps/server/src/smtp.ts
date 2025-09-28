@@ -123,10 +123,13 @@ export class InboundSMTP {
               const domain = sanitize(domainRaw || 'unknown');
               const local = sanitize(localRaw || 'unknown');
               const root = path.join(base, domain, local, 'Maildir');
-              fs.mkdirSync(path.join(root, 'tmp'), { recursive: true });
-              fs.mkdirSync(path.join(root, 'new'), { recursive: true });
+              fs.mkdirSync(path.join(root, 'tmp'), { recursive: true, mode: 0o700 });
+              fs.mkdirSync(path.join(root, 'new'), { recursive: true, mode: 0o700 });
               const fname = `${Date.now()}_${Math.random().toString(36).slice(2)}.eml`;
-              fs.writeFileSync(path.join(root, 'new', fname), raw);
+              const tmpFile = path.join(root, 'new', fname + '.tmp');
+              // write atomically and with restrictive perms
+              fs.writeFileSync(tmpFile, raw, { mode: 0o600 });
+              fs.renameSync(tmpFile, path.join(root, 'new', fname));
 
               // Also save to DB
               await prisma.email.create({
@@ -136,7 +139,8 @@ export class InboundSMTP {
                   subject: parsed.subject,
                   text: parsed.text,
                   html: typeof parsed.html === 'string' ? parsed.html : null,
-                  raw: raw.toString()
+                  // store raw as base64 to preserve binary attachments
+                  raw: raw.toString('base64')
                 }
               });
             }

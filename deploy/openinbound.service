@@ -21,6 +21,13 @@ MemoryHigh=500M
 CPUAccounting=true
 StartLimitIntervalSec=600
 StartLimitBurst=5
+# Additional recommended hardening (uncomment/adjust as needed):
+# ProtectKernelModules=yes
+# ProtectControlGroups=yes
+# RestrictAddressFamilies=AF_INET AF_INET6
+
+# Ensure /etc/openinbound.env is owned by root and mode 600
+# sudo chown root:root /etc/openinbound.env && sudo chmod 600 /etc/openinbound.env
 
 [Install]
 WantedBy=multi-user.target

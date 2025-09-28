@@ -49,7 +49,7 @@ export default function App() {
       </header>
 
       <div className="text-xs text-slate-500 space-y-1">
-        <div>Tip: set a browser-only admin token via <code>localStorage.setItem('ADMIN_TOKEN','your-token')</code>. It is sent as a Bearer token only for protected actions and never stored server-side.</div>
+        <div>Note: do not store long-lived admin secrets in browser storage when viewing untrusted emails; prefer an out-of-band secret store or httpOnly session cookies.</div>
         <div>If JWT is configured server-side, you can exchange it: <button className="underline" onClick={async()=>{ const tok = localStorage.getItem('ADMIN_TOKEN')||''; const r = await adminLogin(tok); if (r){ localStorage.setItem('ADMIN_JWT', r.token); setJwtStatus('JWT acquired'); setTimeout(()=>setJwtStatus(null), 3000);} else { setJwtStatus('Login failed'); setTimeout(()=>setJwtStatus(null), 3000);} }}>Get JWT</button> {jwtStatus && <span className="text-slate-600">— {jwtStatus}</span>}</div>
       </div>
 
@@ -201,7 +201,24 @@ export default function App() {
           </div>
           <div className="mt-4 border-t pt-4">
             {selectedEmail.html ? (
-              <div dangerouslySetInnerHTML={{ __html: selectedEmail.html }} className="prose prose-sm max-w-none" />
+              <div>
+                <div className="text-xs text-slate-500 mb-2">HTML content is potentially unsafe. Click to view in a sandboxed frame.</div>
+                <button className="px-3 py-1 bg-slate-100 rounded" onClick={() => {
+                  // toggle a flag on selectedEmail to show iframe
+                  setSelectedEmail({ ...selectedEmail, _showHtml: !selectedEmail._showHtml });
+                }}>{selectedEmail._showHtml ? 'Hide HTML' : 'Show HTML (sandboxed)'}</button>
+                {selectedEmail._showHtml && (
+                  <div className="mt-3 border rounded overflow-hidden">
+                    <iframe
+                      title="email-html"
+                      sandbox="allow-same-origin"
+                      src={`data:text/html;base64,${btoa(unescape(encodeURIComponent(selectedEmail.html || '')) )}`}
+                      style={{ width: '100%', height: 400, border: 'none' }}
+                    />
+                  </div>
+                )}
+                {!selectedEmail._showHtml && <pre className="whitespace-pre-wrap text-sm">{selectedEmail.text}</pre>}
+              </div>
             ) : (
               <pre className="whitespace-pre-wrap text-sm">{selectedEmail.text}</pre>
             )}
